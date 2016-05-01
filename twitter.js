@@ -12,6 +12,8 @@ function Twitter() {
     access_token_secret: '4c7VCxrmCq9VN9Vs88Moflz3WYxQDn4xIO1qX15CVUMO4'
   });
 
+  this.handle = 'sparkbot4edm';
+
   this.hashtag;
 
   this.tweets = [];
@@ -87,15 +89,41 @@ Twitter.prototype.stream = function(bot, state) {
 Twitter.prototype.winner = function(bot, count, message) {
   var self = this;
 
+  // gen rand between 0 and max
+  function getRand(max) {
+    return Math.floor(Math.random() * max);
+  }
+
   var usersThatTweeted = _.map(self.tweets, 'user');
+  debug(usersThatTweeted);
+
   var usersThatFollow;
   var potentialWinners;
 
   self.getFollowers(function(users) {
     usersThatFollow = _.map(users, 'screen_name');
-    potentialWinners = _.difference(usersThatTweeted, usersThatFollow);
+    debug(usersThatFollow);
+
+    // remove deuplicates
     potentialWinners = _.uniq(potentialWinners);
+
+    // get users that tweeted AND who follow
+    potentialWinners = _.intersection(usersThatTweeted, usersThatFollow);
     debug(potentialWinners);
+
+    // remove self
+    potentialWinners = _.difference(potentialWinners, [ self.handle ]);
+
+    var winner_sn;
+    for (var i = 0; i < count; i++) {
+      winner_sn = potentialWinners[getRand(potentialWinners.length)];
+      bot.say('Winner: @%s', winner_sn);
+      self.client.post('direct_messages/new', {screen_name: winner_sn, text: message},  function(error, tweet, response){
+        if(error) debug(error);
+        bot.say('Sent a Direct Message to @%s: %s', winner_sn, message);
+      });
+    }
+
   });
 
 };
@@ -106,8 +134,8 @@ Twitter.prototype.stop = function(bot, message) {
   this.streaming = false;
 
   self.client.post('statuses/update', {status: message},  function(error, tweet, response){
-    if(error) throw error;
-    debug('sent tweet: %s', tweet);
+    if(error) debug(error);
+    bot.say('Sent Tweet: %s', message);
   });
 };
 
