@@ -19,6 +19,16 @@ function Twitter() {
   this.streaming = true;
 }
 
+Twitter.prototype.getFollowers = function(cb) {
+  var self = this;
+  
+  // get number of followers at start of camapign
+  self.client.get('followers/list', function(error, tweet, response){
+    if(error) debug(error);
+    cb(tweet.users);
+  });
+}
+
 Twitter.prototype.track = function(bot, hashtag) {
   var self = this;
 
@@ -57,15 +67,11 @@ Twitter.prototype.start = function(bot, message) {
   // reset logging for campaign
   self.tweets = [];
 
-  // get number of followers at start of camapign
-  self.client.get('followers/list', function(error, users, response){
-    if(error) debug(error);
-    self.followers = users;
-    debug('followers: %s', users.length);
-    debug('%s', users);
+  // get users
+  self.getFollowers(function(users) {
+    self.followers = users.length;
   });
-  self.followers;
-
+  
 };
 
 Twitter.prototype.stream = function(bot, state) {
@@ -94,7 +100,10 @@ Twitter.prototype.stats = function(bot) {
   var self = this;
 
   bot.say('Tweets total: %s', self.tweets.length);
-  bot.say('New Followers: %s', self.followers);
+  // get users
+  self.getFollowers(function(users) {
+    bot.say('New Followers: %s', users.length - self.followers);
+  });
 };
 
 Twitter.prototype.help = function(bot) {
