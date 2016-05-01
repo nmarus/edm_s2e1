@@ -2,6 +2,7 @@
 
 var _Twitter = require('twitter');
 var debug = require('debug')('tweets');
+var _ = require('lodash');
 
 function Twitter() {
   this.client = new _Twitter({
@@ -11,7 +12,7 @@ function Twitter() {
     access_token_secret: '4c7VCxrmCq9VN9Vs88Moflz3WYxQDn4xIO1qX15CVUMO4'
   });
 
-  this.hashtag = '';
+  this.hashtag;
 
   this.tweets = [];
   this.followers = 0;
@@ -21,7 +22,7 @@ function Twitter() {
 
 Twitter.prototype.getFollowers = function(cb) {
   var self = this;
-  
+
   // get number of followers at start of camapign
   self.client.get('followers/list', function(error, tweet, response){
     if(error) debug(error);
@@ -57,9 +58,11 @@ Twitter.prototype.track = function(bot, hashtag) {
 Twitter.prototype.start = function(bot, message) {
   var self = this;
 
+  if(self.hashtag) message = message + ' ' + self.hashtag;
+
   self.client.post('statuses/update', {status: message},  function(error, tweet, response){
     if(error) debug(error);
-    debug('sent tweet: %s', tweet);
+    debug('Tweet sent: %s', message);
   });
 
   bot.say('Tweet sent: %s', message);
@@ -84,11 +87,23 @@ Twitter.prototype.stream = function(bot, state) {
 Twitter.prototype.winner = function(bot, count, message) {
   var self = this;
 
+  var usersThatTweeted = _.map(self.tweets, 'user');
+  var usersThatFollow;
+  var potentialWinners;
+
+  self.getFollowers(function(users) {
+    usersThatFollow = _.map(users, 'screen_name');
+    potentialWinners = _.difference(usersThatTweeted, usersThatFollow);
+    potentialWinners = _.uniq(potentialWinners);
+    debug(potentialWinners);
+  });
 
 };
 
 Twitter.prototype.stop = function(bot, message) {
   var self = this;
+
+  this.streaming = false;
 
   self.client.post('statuses/update', {status: message},  function(error, tweet, response){
     if(error) throw error;
